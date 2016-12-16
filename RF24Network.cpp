@@ -75,15 +75,19 @@ RF24Network::RF24Network( RF24& _radio, RF24& _radio1 ): radio(_radio), radio1(_
 #endif
 /******************************************************************/
 
-void RF24Network::begin(uint8_t _channel, uint16_t _node_address )
+bool RF24Network::begin(uint8_t _channel, uint16_t _node_address )
 {
   if (! is_valid_address(_node_address) )
-    return;
+    return false;
 
   node_address = _node_address;
 
+  if ( ! radio.isConnected() ){
+	  return false;
+  }
+
   if ( ! radio.isValid() ){
-    return;
+    return false;
   }
 
   // Set up the radio the way we want it to look
@@ -120,6 +124,7 @@ void RF24Network::begin(uint8_t _channel, uint16_t _node_address )
   }
   radio.startListening();
 
+  return true;
 }
 
 /******************************************************************/
@@ -175,8 +180,8 @@ uint8_t RF24Network::update(void)
 	  #if defined (RF24_LINUX)
 	    IF_SERIAL_DEBUG(printf_P("%u: MAC Received on %u %s\n\r",millis(),pipe_num,header->toString()));
         if (frame_size) {
-          IF_SERIAL_DEBUG_FRAGMENTATION_L2(printf("%u: FRG Rcv frame size %i\n",millis(),frame_size););
-          IF_SERIAL_DEBUG_FRAGMENTATION_L2(printf("%u: FRG Rcv frame ",millis()); const char* charPtr = reinterpret_cast<const char*>(frame_buffer); for (uint16_t i = 0; i < frame_size; i++) { printf("%02X ", charPtr[i]); }; printf("\n\r"));
+          IF_SERIAL_DEBUG_FRAGMENTATION_L2(printf_P("%u: FRG Rcv frame size %i\n",millis(),frame_size););
+          IF_SERIAL_DEBUG_FRAGMENTATION_L2(printf_P("%u: FRG Rcv frame ",millis()); const char* charPtr = reinterpret_cast<const char*>(frame_buffer); for (uint16_t i = 0; i < frame_size; i++) { printf_P("%02X ", charPtr[i]); }; printf_P("\n\r"));
         }
 	  #else
       IF_SERIAL_DEBUG(printf_P(PSTR("%lu: MAC Received on %u %s\n\r"),millis(),pipe_num,header->toString()));
@@ -656,10 +661,10 @@ uint16_t RF24Network::read(RF24NetworkHeader& header,void* message, uint16_t max
     {		
 		maxlen = rf24_min(maxlen,bufsize);
 		memcpy(message,frame_queue+10,maxlen);
-	    IF_SERIAL_DEBUG(printf("%lu: NET message size %d\n",millis(),bufsize););
+	    IF_SERIAL_DEBUG(printf_P("%lu: NET message size %d\n",millis(),bufsize););
 
 	
-	IF_SERIAL_DEBUG( uint16_t len = maxlen; printf_P(PSTR("%lu: NET r message "),millis());const uint8_t* charPtr = reinterpret_cast<const uint8_t*>(message);while(len--){ printf("%02x ",charPtr[len]);} printf_P(PSTR("\n\r") ) );      
+	IF_SERIAL_DEBUG( uint16_t len = maxlen; printf_P(PSTR("%lu: NET r message "),millis());const uint8_t* charPtr = reinterpret_cast<const uint8_t*>(message);while(len--){ printf_P("%02x ",charPtr[len]);} printf_P(PSTR("\n\r") ) );
 	  
     }
 	next_frame-=bufsize+10;
@@ -694,7 +699,7 @@ bool RF24Network::write(RF24NetworkHeader& header,const void* message, uint16_t 
 }
 /******************************************************************/
 bool RF24Network::write(RF24NetworkHeader& header,const void* message, uint16_t len, uint16_t writeDirect){
-    
+
     //Allows time for requests (RF24Mesh) to get through between failed writes on busy nodes
     while(millis()-txTime < 25){ if(update() > 127){break;} }
 	delayMicroseconds(200);
@@ -714,7 +719,7 @@ bool RF24Network::write(RF24NetworkHeader& header,const void* message, uint16_t 
   }
   //Check payload size
   if (len > MAX_PAYLOAD_SIZE) {
-    IF_SERIAL_DEBUG(printf("%u: NET write message failed. Given 'len' %d is bigger than the MAX Payload size %i\n\r",millis(),len,MAX_PAYLOAD_SIZE););
+    IF_SERIAL_DEBUG(printf_P("%u: NET write message failed. Given 'len' %d is bigger than the MAX Payload size %i\n\r",millis(),len,MAX_PAYLOAD_SIZE););
     return false;
   }
 
@@ -723,7 +728,7 @@ bool RF24Network::write(RF24NetworkHeader& header,const void* message, uint16_t 
 
   uint8_t msgCount = 0;
 
-  IF_SERIAL_DEBUG_FRAGMENTATION(printf("%lu: FRG Total message fragments %d\n\r",millis(),fragment_id););
+  IF_SERIAL_DEBUG_FRAGMENTATION(printf_P("%lu: FRG Total message fragments %d\n\r",millis(),fragment_id););
   
   if(header.to_node != 0100){
     networkFlags |= FLAG_FAST_FRAG;
@@ -773,7 +778,7 @@ bool RF24Network::write(RF24NetworkHeader& header,const void* message, uint16_t 
     //if(writeDirect != 070){ delay(2); } //Delay 2ms between sending multicast payloads
  
 	if (!ok && retriesPerFrag >= 3) {
-        IF_SERIAL_DEBUG_FRAGMENTATION(printf("%lu: FRG TX with fragmentID '%d' failed after %d fragments. Abort.\n\r",millis(),fragment_id,msgCount););
+        IF_SERIAL_DEBUG_FRAGMENTATION(printf_P("%lu: FRG TX with fragmentID '%d' failed after %d fragments. Abort.\n\r",millis(),fragment_id,msgCount););
 		break;
     }
 
@@ -835,7 +840,7 @@ bool RF24Network::_write(RF24NetworkHeader& header,const void* message, uint16_t
 	
     memcpy(frame_buffer + sizeof(RF24NetworkHeader),message,len);
 	
-	IF_SERIAL_DEBUG(uint16_t tmpLen = len;printf_P(PSTR("%lu: NET message "),millis());const uint8_t* charPtr = reinterpret_cast<const uint8_t*>(message);while(tmpLen--){ printf("%02x ",charPtr[tmpLen]);} printf_P(PSTR("\n\r") ) );
+	IF_SERIAL_DEBUG(uint16_t tmpLen = len;printf_P(PSTR("%lu: NET message "),millis());const uint8_t* charPtr = reinterpret_cast<const uint8_t*>(message);while(tmpLen--){ printf_P("%02x ",charPtr[tmpLen]);} printf_P(PSTR("\n\r") ) );
     #endif
   }
 
@@ -1072,7 +1077,9 @@ const char* RF24NetworkHeader::toString(void) const
 {
   static char buffer[45];
   //snprintf_P(buffer,sizeof(buffer),PSTR("id %04x from 0%o to 0%o type %c"),id,from_node,to_node,type);
-  sprintf_P(buffer,PSTR("id %u from 0%o to 0%o type %d"),id,from_node,to_node,type);
+  #if (!(defined(MSP430F5529) || defined(MSP430G2)))
+  	  sprintf_P(buffer,PSTR("id %u from 0%o to 0%o type %d"),id,from_node,to_node,type);
+  #endif
   return buffer;
 }
 
@@ -1239,10 +1246,14 @@ uint16_t levelToAddress(uint8_t level){
 uint64_t pipe_address( uint16_t node, uint8_t pipe )
 {
   
-  static uint8_t address_translation[] = { 0xc3,0x3c,0x33,0xce,0x3e,0xe3,0xec };
-  uint64_t result = 0xCCCCCCCCCCLL;
+  static uint8_t address_translation[] = { 0xa0, 0xe1, 0xf0, 0xf2, 0xf1, 0xa5, 0xec };
+  uint64_t result = 0xf0f0f0f0f0LL;
+
+//  static uint8_t address_translation[] = { 0xc3,0x3c,0x33,0xce,0x3e,0xe3,0xec };
+//    uint64_t result = 0xCCCCCCCCCCLL;
   uint8_t* out = reinterpret_cast<uint8_t*>(&result);
   
+
   // Translate the address to use our optimally chosen radio address bytes
 	uint8_t count = 1; uint16_t dec = node;
 

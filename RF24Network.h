@@ -672,7 +672,7 @@ public:
    * @param _node_address The logical address of this node
    *
    */
-  void begin(uint8_t _channel, uint16_t _node_address );  
+  bool begin(uint8_t _channel, uint16_t _node_address );
   
   /**@}*/
   /**

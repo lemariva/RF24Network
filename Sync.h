@@ -15,7 +15,7 @@
 #include <string.h>
 // Framework headers
 // Library headers
-#include <RF24Network_config.h>
+#include "RF24Network_config.h"
 // Project headers
 
 class RF24Network;
