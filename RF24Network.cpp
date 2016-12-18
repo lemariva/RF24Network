@@ -1077,7 +1077,7 @@ const char* RF24NetworkHeader::toString(void) const
 {
   static char buffer[45];
   //snprintf_P(buffer,sizeof(buffer),PSTR("id %04x from 0%o to 0%o type %c"),id,from_node,to_node,type);
-  #if (!(defined(MSP430F5529) || defined(MSP430G2)))
+  #if (!defined(TI_LAUNCHPADS))
   	  sprintf_P(buffer,PSTR("id %u from 0%o to 0%o type %d"),id,from_node,to_node,type);
   #endif
   return buffer;
