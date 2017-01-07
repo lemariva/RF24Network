@@ -1245,13 +1245,15 @@ uint16_t levelToAddress(uint8_t level){
 
 uint64_t pipe_address( uint16_t node, uint8_t pipe )
 {
-  
-  static uint8_t address_translation[] = { 0xa0, 0xe1, 0xf0, 0xf2, 0xf1, 0xa5, 0xec };
-  uint64_t result = 0xf0f0f0f0f0LL;
+	#if defined(MSP430G2553)
+		uint8_t address_translation[] = { 0xc3,0x3c,0x33,0xce,0x3e,0xe3,0xec };
+	#else
+		static uint8_t address_translation[] = { 0xc3,0x3c,0x33,0xce,0x3e,0xe3,0xec };
+	#endif
 
-//  static uint8_t address_translation[] = { 0xc3,0x3c,0x33,0xce,0x3e,0xe3,0xec };
-//    uint64_t result = 0xCCCCCCCCCCLL;
-  uint8_t* out = reinterpret_cast<uint8_t*>(&result);
+	uint64_t result = 0xCCCCCCCCCCLL;
+
+	uint8_t* out = reinterpret_cast<uint8_t*>(&result);
   
 
   // Translate the address to use our optimally chosen radio address bytes
